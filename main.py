@@ -9,12 +9,16 @@ from torch.optim.lr_scheduler import StepLR
 from torch.utils.data.sampler import SubsetRandomSampler
 
 import os
+import random
+import numpy as np
+from sklearn.model_selection import train_test_split
 
 '''
 This code is adapted from two sources:
 (i) The official PyTorch MNIST example (https://github.com/pytorch/examples/blob/master/mnist/main.py)
 (ii) Starter code from Yisong Yue's CS 155 Course (http://www.yisongyue.com/courses/cs155/2020_winter/)
 '''
+data_dir = '/Users/sharon/data/EE148/'
 
 class fcNet(nn.Module):
     '''
@@ -175,7 +179,7 @@ def main():
         model = fcNet().to(device)
         model.load_state_dict(torch.load(args.load_model))
 
-        test_dataset = datasets.MNIST('../data', train=False,
+        test_dataset = datasets.MNIST(data_dir, train=False,
                     transform=transforms.Compose([
                         transforms.ToTensor(),
                         transforms.Normalize((0.1307,), (0.3081,))
@@ -189,26 +193,29 @@ def main():
         return
 
     # Pytorch has default MNIST dataloader which loads data at each iteration
-    train_dataset = datasets.MNIST('../data', train=True, download=True,
+    train_dataset = datasets.MNIST(data_dir, train=True, download=True,
                 transform=transforms.Compose([       # Data preprocessing
                     transforms.ToTensor(),           # Add data augmentation here
                     transforms.Normalize((0.1307,), (0.3081,))
                 ]))
 
-    # You can assign indices for training/validation or use a random subset for
-    # training by using SubsetRandomSampler. Right now the train and validation
-    # sets are built from the same indices - this is bad! Change it so that
-    # the training and validation sets are disjoint and have the correct relative sizes.
-    subset_indices_train = range(len(train_dataset))
-    subset_indices_valid = range(len(train_dataset))
+    # Assign indices for disjoint training/validation or use a random subset for
+    # training by using SubsetRandomSampler.
+    train_val_dataloader = torch.utils.data.DataLoader(
+            train_dataset, batch_size=len(train_dataset))
+    train_val_features, train_val_labels = next(iter(train_val_dataloader))
+    train_val_indices = list(range(len(train_dataset)))
+    _, _, _, _, indices_train, indices_val = train_test_split(
+            train_val_features, train_val_labels, train_val_indices,
+            train_size=0.85, stratify=train_val_labels)
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size,
-        sampler=SubsetRandomSampler(subset_indices_train)
+        sampler=SubsetRandomSampler(indices_train)
     )
     val_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.test_batch_size,
-        sampler=SubsetRandomSampler(subset_indices_valid)
+        sampler=SubsetRandomSampler(indices_val)
     )
 
     # Load your model [fcNet, ConvNet, Net]
