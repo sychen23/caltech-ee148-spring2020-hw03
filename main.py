@@ -12,6 +12,7 @@ import os
 import random
 import numpy as np
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 '''
 This code is adapted from two sources:
@@ -110,7 +111,6 @@ def train(args, model, device, train_loader, optimizer, epoch):
                 epoch, batch_idx * len(data), len(train_loader.sampler),
                 100. * batch_idx / len(train_loader), loss.item()))
 
-
 def test(model, device, test_loader):
     model.eval()    # Set the model to inference mode
     test_loss = 0
@@ -130,6 +130,8 @@ def test(model, device, test_loader):
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         test_loss, correct, test_num,
         100. * correct / test_num))
+
+    return test_loss, correct / test_num
 
 
 def main():
@@ -196,6 +198,7 @@ def main():
     train_dataset = datasets.MNIST(data_dir, train=True, download=True,
                 transform=transforms.Compose([       # Data preprocessing
                     transforms.ToTensor(),           # Add data augmentation here
+                    #transforms.ColorJitter(),
                     transforms.Normalize((0.1307,), (0.3081,))
                 ]))
 
@@ -227,13 +230,24 @@ def main():
     # Set your learning rate scheduler
     scheduler = StepLR(optimizer, step_size=args.step, gamma=args.gamma)
 
+    test_loss_list = []
+    test_acc_list = []
     # Training loop
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
-        test(model, device, val_loader)
+        test_loss, test_acc = test(model, device, val_loader)
+        test_loss_list.append(test_loss)
+        test_acc_list.append(test_acc)
+
         scheduler.step()    # learning rate scheduler
 
         # You may optionally save your model at each epoch here
+    plt.plot(test_loss_list, label='loss')
+    plt.plot(test_acc_list, label='acc')
+    plt.title('CNN (without Augmentation) Performance across Epochs')
+    plt.legend()
+    plt.xlabel('Epoch')
+    plt.savefig('cnn-no-augmentation.png')
 
     if args.save_model:
         torch.save(model.state_dict(), "mnist_model.pt")
