@@ -88,9 +88,34 @@ class Net(nn.Module):
     '''
     def __init__(self):
         super(Net, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=8, kernel_size=(3,3), stride=1)
+        self.conv2 = nn.Conv2d(8, 8, 3, 1)
+        self.dropout1 = nn.Dropout2d(0.5)
+        self.dropout2 = nn.Dropout2d(0.5)
+        self.fc1 = nn.Linear(200, 64)
+        self.fc2 = nn.Linear(64, 10)
+
+        #Linear, Conv2d, MaxPool2d, AvgPool2d, ReLU, Softmax, BatchNorm2d, Dropout, Flatten, Sequential.
 
     def forward(self, x):
-        return x
+        x = self.conv1(x)
+        x = F.relu(x)
+        x = F.max_pool2d(x, 2)
+        x = F.avg_pool2d(x, 2)
+        x = self.dropout1(x)
+
+        x = self.conv2(x)
+        x = F.relu(x)
+        x = F.max_pool2d(x, 2)
+        x = self.dropout2(x)
+
+        x = torch.flatten(x, 1)
+        x = self.fc1(x)
+        x = F.relu(x)
+        x = self.fc2(x)
+
+        output = F.log_softmax(x, dim=1)
+        return output
 
 
 def train(args, model, device, train_loader, optimizer, epoch):
@@ -138,6 +163,8 @@ def main():
     # Training settings
     # Use the command line to modify the default settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
+    parser.add_argument('--augmentation', type=bool, default=False,
+                        help='augmentation for training (default: False)')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
@@ -195,12 +222,21 @@ def main():
         return
 
     # Pytorch has default MNIST dataloader which loads data at each iteration
-    train_dataset = datasets.MNIST(data_dir, train=True, download=True,
-                transform=transforms.Compose([       # Data preprocessing
-                    transforms.ToTensor(),           # Add data augmentation here
-                    #transforms.ColorJitter(),
-                    transforms.Normalize((0.1307,), (0.3081,))
-                ]))
+    if args.augmentation:
+        print('augmentation')
+        train_dataset = datasets.MNIST(data_dir, train=True, download=True,
+                    transform=transforms.Compose([       # Data preprocessing
+                        transforms.ToTensor(),           # Add data augmentation here
+                        transforms.ColorJitter(),
+                        transforms.Normalize((0.1307,), (0.3081,))
+                    ]))
+    else:
+        print('no augmentation')
+        train_dataset = datasets.MNIST(data_dir, train=True, download=True,
+                    transform=transforms.Compose([       # Data preprocessing
+                        transforms.ToTensor(),           # Add data augmentation here
+                        transforms.Normalize((0.1307,), (0.3081,))
+                    ]))
 
     # Assign indices for disjoint training/validation or use a random subset for
     # training by using SubsetRandomSampler.
@@ -241,13 +277,31 @@ def main():
 
         scheduler.step()    # learning rate scheduler
 
-        # You may optionally save your model at each epoch here
-    plt.plot(test_loss_list, label='loss')
-    plt.plot(test_acc_list, label='acc')
-    plt.title('CNN (without Augmentation) Performance across Epochs')
-    plt.legend()
+    if args.augmentation:
+        loss_title = 'CNN (with Augmentation) Loss across Epochs'
+        loss_figname = 'cnn-augmentation-loss.png'
+        acc_title = 'CNN (with Augmentation) Accuracy across Epochs'
+        acc_figname = 'cnn-augmentation-acc.png'
+    else:
+        loss_title = 'CNN (without Augmentation) Loss across Epochs'
+        loss_figname = 'cnn-no-augmentation-loss.png'
+        acc_title = 'CNN (without Augmentation) Accuracy across Epochs'
+        acc_figname = 'cnn-no-augmentation-acc.png'
+
+
+    plt.plot(test_loss_list)
+    plt.title(loss_title)
     plt.xlabel('Epoch')
-    plt.savefig('cnn-no-augmentation.png')
+    plt.savefig(loss_figname)
+    plt.show()
+
+    plt.plot(test_acc_list)
+    plt.title(acc_title)
+    plt.xlabel('Epoch')
+    plt.savefig(acc_figname)
+    plt.show()
+
+        # You may optionally save your model at each epoch here
 
     if args.save_model:
         torch.save(model.state_dict(), "mnist_model.pt")
