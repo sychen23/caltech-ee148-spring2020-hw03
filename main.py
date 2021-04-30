@@ -100,7 +100,6 @@ class Net(nn.Module):
     def forward(self, x):
         x = self.conv1(x)
         x = F.relu(x)
-        x = F.max_pool2d(x, 2)
         x = F.avg_pool2d(x, 2)
         x = self.dropout1(x)
 
@@ -165,6 +164,8 @@ def main():
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
     parser.add_argument('--augmentation', type=bool, default=False,
                         help='augmentation for training (default: False)')
+    parser.add_argument('--model', type=str, default='fcNet',
+                        help='augmentation for training (default: fcNet)')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
@@ -258,7 +259,13 @@ def main():
     )
 
     # Load your model [fcNet, ConvNet, Net]
-    model = ConvNet().to(device)
+    print(args.model)
+    if args.model == 'Net':
+        model = Net().to(device)
+    elif args.model == 'ConvNet':
+        model = ConvNet().to(device)
+    else:
+        model = fcNet().to(device)
 
     # Try different optimzers here [Adam, SGD, RMSprop]
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
@@ -278,15 +285,15 @@ def main():
         scheduler.step()    # learning rate scheduler
 
     if args.augmentation:
-        loss_title = 'CNN (with Augmentation) Loss across Epochs'
-        loss_figname = 'cnn-augmentation-loss.png'
-        acc_title = 'CNN (with Augmentation) Accuracy across Epochs'
-        acc_figname = 'cnn-augmentation-acc.png'
+        loss_title = '%s (with Augmentation) Loss across Epochs' % args.model
+        loss_figname = '%s-augmentation-loss.png' % args.model
+        acc_title = '%s (with Augmentation) Accuracy across Epochs' % args.model
+        acc_figname = '%s-augmentation-acc.png' % args.model
     else:
-        loss_title = 'CNN (without Augmentation) Loss across Epochs'
-        loss_figname = 'cnn-no-augmentation-loss.png'
-        acc_title = 'CNN (without Augmentation) Accuracy across Epochs'
-        acc_figname = 'cnn-no-augmentation-acc.png'
+        loss_title = '%s (without Augmentation) Loss across Epochs' % args.model
+        loss_figname = '%s-no-augmentation-loss.png' % args.model
+        acc_title = '%s (without Augmentation) Accuracy across Epochs' % args.model
+        acc_figname = '%s-no-augmentation-acc.png' % args.model
 
 
     plt.plot(test_loss_list)
