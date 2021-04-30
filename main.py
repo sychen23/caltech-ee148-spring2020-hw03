@@ -140,14 +140,30 @@ def test(model, device, test_loader):
     test_loss = 0
     correct = 0
     test_num = 0
+    figure = plt.figure(figsize=(8, 8))
+    plt.suptitle('Model Mistakes')
+    cols, rows = 3, 3
+    i = 1
     with torch.no_grad():   # For the inference step, gradient is not computed
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
+            for j, o in enumerate(output):
+                output2 = torch.argmax(o)
+                target2 = target[j]
+                if output2 != target2:
+                    if i <= 9:
+                        figure.add_subplot(rows, cols, i)
+                        plt.title('T: %s, O: %s' % (target2.item(), output2.item()))
+                        plt.axis("off")
+                        plt.imshow(data[j].squeeze(), cmap="gray")
+                        i += 1
             test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
             pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
             test_num += len(data)
+    plt.savefig('mismatches.png')
+    plt.show()
 
     test_loss /= test_num
 
@@ -220,7 +236,7 @@ def main():
         training_sizes = [60000 / i for i in [16, 8, 4, 2, 1]]
         model_names = ['mnist_model_div-%d.pt' % i for i in [16, 8, 4, 2, 1]]
         test_loss_list = []
-        train_loss_list = [0.1710, 0.1422, 0.1134, 0.0554, ]
+        train_loss_list = [0.1710, 0.1422, 0.1134, 0.0554, 0.0511]
         for model_name in model_names:
             #model.load_state_dict(torch.load(args.load_model))
             model.load_state_dict(torch.load(model_name))
@@ -246,8 +262,10 @@ def main():
         plt.loglog(training_sizes, test_loss_list, label='test')
         plt.loglog(training_sizes, train_loss_list, label='train')
         plt.title(loss_title)
-        plt.xlabel(training_sizes)
+        plt.ylabel('Loss')
+        plt.xlabel('Training Dataset Size')
         plt.legend()
+        plt.tight_layout()
         plt.savefig('%s.png' % loss_figname)
         plt.show()
 
