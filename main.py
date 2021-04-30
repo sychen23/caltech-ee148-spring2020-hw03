@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torchvision import datasets, transforms
+from torchvision import datasets, transforms, utils
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data.sampler import SubsetRandomSampler
 
@@ -177,6 +177,27 @@ def test(model, device, test_loader):
 def visualize_kernels(kernel):
     n,c,w,h = kernel.shape
     print(n, c, w, h)
+    nrow=8
+    padding=1
+    rows = np.min((kernel.shape[0] // nrow + 1, 64))
+    grid = utils.make_grid(kernel, nrow=nrow, normalize=True, padding=padding)
+    plt.figure( figsize=(nrow,rows) )
+    plt.imshow(grid.numpy().transpose((1, 2, 0)))
+
+    return
+    figure = plt.figure(figsize=(8, 8))
+    plt.suptitle('First Layer Kernels')
+    cols, rows = 3, 3
+    i = 1
+    if i <= 9:
+        figure.add_subplot(rows, cols, i)
+        plt.title('T: %s, O: %s' % (target2.item(), output2.item()))
+        plt.axis("off")
+        plt.imshow(data[j].squeeze(), cmap="gray")
+        i += 1
+
+    plt.savefig('kernels.png')
+    plt.show()
 
 
 def main():
