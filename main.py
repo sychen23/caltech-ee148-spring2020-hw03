@@ -90,8 +90,8 @@ class Net(nn.Module):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=8, kernel_size=(3,3), stride=1)
         self.conv2 = nn.Conv2d(8, 8, 3, 1)
-        self.dropout1 = nn.Dropout2d(0.3)
-        self.dropout2 = nn.Dropout2d(0.2)
+        self.dropout1 = nn.Dropout2d(0.1)
+        self.dropout2 = nn.Dropout2d(0.1)
         self.fc1 = nn.Linear(200, 64)
         self.fc2 = nn.Linear(64, 10)
 
