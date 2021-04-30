@@ -174,12 +174,19 @@ def test(model, device, test_loader):
     return test_loss, correct / test_num
 
 
+def visualize_kernels(kernel):
+    n,c,w,h = kernel.shape
+    print(n, c, w, h)
+
+
 def main():
     # Training settings
     # Use the command line to modify the default settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
     parser.add_argument('--augmentation', type=bool, default=False,
                         help='augmentation for training (default: False)')
+    parser.add_argument('--get-loglog-plot', type=bool, default=False,
+                        help='plot loss vs. training size (default: False)')
     parser.add_argument('--model', type=str, default='fcNet',
                         help='augmentation for training (default: fcNet)')
     parser.add_argument('--training-set-divide', type=int, default=1, 
@@ -233,14 +240,18 @@ def main():
         else:
             model = fcNet().to(device)
 
-        training_sizes = [60000 / i for i in [16, 8, 4, 2, 1]]
-        model_names = ['mnist_model_div-%d.pt' % i for i in [16, 8, 4, 2, 1]]
-        test_loss_list = []
-        train_loss_list = [0.1710, 0.1422, 0.1134, 0.0554, 0.0511]
+        if args.get_loglog_plot:
+            training_sizes = [60000 / i for i in [16, 8, 4, 2, 1]]
+            model_names = ['mnist_model_div-%d.pt' % i for i in [16, 8, 4, 2, 1]]
+            test_loss_list = []
+            train_loss_list = [0.1710, 0.1422, 0.1134, 0.0554, 0.0511]
+        else:
+            model_names = [args.load_model]
         for model_name in model_names:
-            #model.load_state_dict(torch.load(args.load_model))
             model.load_state_dict(torch.load(model_name))
 
+            kernel = model.conv1.weight.data.clone()
+            visualize_kernels(kernel)
             test_dataset = datasets.MNIST(data_dir, train=False,
                         transform=transforms.Compose([
                             transforms.ToTensor(),
@@ -251,23 +262,26 @@ def main():
                 test_dataset, batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
             test_loss, test_acc = test(model, device, test_loader)
-            test_loss_list.append(test_loss)
-        if args.augmentation:
-            loss_title = '%s (with Augmentation) Loss across Train Data Sizes' % args.model
-            loss_figname = '%s-augmentation-loss-sizes' % args.model
-        else:
-            loss_title = '%s (without Augmentation) Loss across Train Data Sizes' % args.model
-            loss_figname = '%s-no-augmentation-loss-sizes' % args.model
+            if args.get_loglog_plot:
+                test_loss_list.append(test_loss)
 
-        plt.loglog(training_sizes, test_loss_list, label='test')
-        plt.loglog(training_sizes, train_loss_list, label='train')
-        plt.title(loss_title)
-        plt.ylabel('Loss')
-        plt.xlabel('Training Dataset Size')
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig('%s.png' % loss_figname)
-        plt.show()
+        if args.get_loglog_plot:
+            if args.augmentation:
+                loss_title = '%s (with Augmentation) Loss across Train Data Sizes' % args.model
+                loss_figname = '%s-augmentation-loss-sizes' % args.model
+            else:
+                loss_title = '%s (without Augmentation) Loss across Train Data Sizes' % args.model
+                loss_figname = '%s-no-augmentation-loss-sizes' % args.model
+
+            plt.loglog(training_sizes, test_loss_list, label='test')
+            plt.loglog(training_sizes, train_loss_list, label='train')
+            plt.title(loss_title)
+            plt.ylabel('Loss')
+            plt.xlabel('Training Dataset Size')
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig('%s.png' % loss_figname)
+            plt.show()
 
         return
 
