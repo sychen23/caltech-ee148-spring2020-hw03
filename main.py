@@ -166,6 +166,9 @@ def main():
                         help='augmentation for training (default: False)')
     parser.add_argument('--model', type=str, default='fcNet',
                         help='augmentation for training (default: fcNet)')
+    parser.add_argument('--training-set-divide', type=int, default=1, 
+                        metavar='N',
+                        help='divide training set by this number (default: 1)')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
@@ -206,7 +209,13 @@ def main():
         assert os.path.exists(args.load_model)
 
         # Set the test model
-        model = fcNet().to(device)
+        print(args.model)
+        if args.model == 'Net':
+            model = Net().to(device)
+        elif args.model == 'ConvNet':
+            model = ConvNet().to(device)
+        else:
+            model = fcNet().to(device)
         model.load_state_dict(torch.load(args.load_model))
 
         test_dataset = datasets.MNIST(data_dir, train=False,
@@ -241,10 +250,14 @@ def main():
 
     # Assign indices for disjoint training/validation or use a random subset for
     # training by using SubsetRandomSampler.
+    training_set_size = len(train_dataset)
+    if args.training_set_divide:
+        training_set_size //= args.training_set_divide
+    print('training_set_size: %d' % training_set_size)
     train_val_dataloader = torch.utils.data.DataLoader(
-            train_dataset, batch_size=len(train_dataset))
+            train_dataset, batch_size=training_set_size)
     train_val_features, train_val_labels = next(iter(train_val_dataloader))
-    train_val_indices = list(range(len(train_dataset)))
+    train_val_indices = list(range(training_set_size))
     _, _, _, _, indices_train, indices_val = train_test_split(
             train_val_features, train_val_labels, train_val_indices,
             train_size=0.85, stratify=train_val_labels)
@@ -286,32 +299,38 @@ def main():
 
     if args.augmentation:
         loss_title = '%s (with Augmentation) Loss across Epochs' % args.model
-        loss_figname = '%s-augmentation-loss.png' % args.model
+        loss_figname = '%s-augmentation-loss' % args.model
         acc_title = '%s (with Augmentation) Accuracy across Epochs' % args.model
-        acc_figname = '%s-augmentation-acc.png' % args.model
+        acc_figname = '%s-augmentation-acc' % args.model
     else:
         loss_title = '%s (without Augmentation) Loss across Epochs' % args.model
-        loss_figname = '%s-no-augmentation-loss.png' % args.model
+        loss_figname = '%s-no-augmentation-loss' % args.model
         acc_title = '%s (without Augmentation) Accuracy across Epochs' % args.model
-        acc_figname = '%s-no-augmentation-acc.png' % args.model
+        acc_figname = '%s-no-augmentation-acc' % args.model
 
+    if args.training_set_divide:
+        loss_figname += '_div-%d' % args.training_set_divide
+        acc_figname += '_div-%d' % args.training_set_divide
 
     plt.plot(test_loss_list)
     plt.title(loss_title)
     plt.xlabel('Epoch')
-    plt.savefig(loss_figname)
+    plt.savefig('%s.png' % loss_figname)
     plt.show()
 
     plt.plot(test_acc_list)
     plt.title(acc_title)
     plt.xlabel('Epoch')
-    plt.savefig(acc_figname)
+    plt.savefig('%s.png' % acc_figname)
     plt.show()
 
         # You may optionally save your model at each epoch here
 
     if args.save_model:
-        torch.save(model.state_dict(), "mnist_model.pt")
+        model_name = "mnist_model"
+        if args.training_set_divide:
+            model_name += '_div-%d' % args.training_set_divide
+        torch.save(model.state_dict(), "%s.pt" % model_name)
 
 
 if __name__ == '__main__':
