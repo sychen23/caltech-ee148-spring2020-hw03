@@ -174,28 +174,22 @@ def test(model, device, test_loader):
     return test_loss, correct / test_num
 
 
-def visualize_kernels(kernel):
-    n,c,w,h = kernel.shape
-    print(n, c, w, h)
-    nrow=8
-    padding=1
-    rows = np.min((kernel.shape[0] // nrow + 1, 64))
-    grid = utils.make_grid(kernel, nrow=nrow, normalize=True, padding=padding)
-    plt.figure( figsize=(nrow,rows) )
-    plt.imshow(grid.numpy().transpose((1, 2, 0)))
-
-    return
+def visualize_kernels(kernel, kernel2=None):
+    """
+    Visualize the first layer kernels and one kernel from the second layer.
+    """
     figure = plt.figure(figsize=(8, 8))
     plt.suptitle('First Layer Kernels')
     cols, rows = 3, 3
-    i = 1
-    if i <= 9:
+    for i in range(1, 9):
         figure.add_subplot(rows, cols, i)
-        plt.title('T: %s, O: %s' % (target2.item(), output2.item()))
         plt.axis("off")
-        plt.imshow(data[j].squeeze(), cmap="gray")
-        i += 1
+        plt.imshow(kernel[i-1].squeeze(), cmap="gray")
 
+    figure.add_subplot(rows, cols, 9)
+    plt.title("Kernel 1 of Conv2")
+    plt.axis("off")
+    plt.imshow(kernel2[0].squeeze(), cmap="gray")
     plt.savefig('kernels.png')
     plt.show()
 
@@ -272,7 +266,8 @@ def main():
             model.load_state_dict(torch.load(model_name))
 
             kernel = model.conv1.weight.data.clone()
-            visualize_kernels(kernel)
+            kernel2 = model.conv2.weight.data.clone()
+            visualize_kernels(kernel, kernel2)
             test_dataset = datasets.MNIST(data_dir, train=False,
                         transform=transforms.Compose([
                             transforms.ToTensor(),
