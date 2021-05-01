@@ -13,6 +13,7 @@ import random
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
+from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 
 '''
@@ -98,7 +99,7 @@ class Net(nn.Module):
 
         #Linear, Conv2d, MaxPool2d, AvgPool2d, ReLU, Softmax, BatchNorm2d, Dropout, Flatten, Sequential.
 
-    def forward(self, x):
+    def forward(self, x, get_feature_vector=False):
         x = self.conv1(x)
         x = F.relu(x)
         x = F.avg_pool2d(x, 2)
@@ -111,6 +112,10 @@ class Net(nn.Module):
 
         x = torch.flatten(x, 1)
         x = self.fc1(x)
+
+        if get_feature_vector:
+            return x
+
         x = F.relu(x)
         x = self.fc2(x)
 
@@ -147,15 +152,21 @@ def test(model, device, test_loader):
     i = 1
     y_true = []
     y_pred = []
+    feature_vectors = []
+    #images = []
     with torch.no_grad():   # For the inference step, gradient is not computed
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
+            feature_vector = model(data, get_feature_vector=True)
+
             for j, o in enumerate(output):
                 output2 = torch.argmax(o)
                 target2 = target[j]
                 y_true.append(target2)
                 y_pred.append(output2)
+                feature_vectors.append(feature_vector[j].cpu().detach().numpy())
+                #images.append(data)
                 if output2 != target2:
                     if i <= 9:
                         figure.add_subplot(rows, cols, i)
@@ -171,6 +182,8 @@ def test(model, device, test_loader):
     plt.show()
 
     visualize_confusion_matrix(y_true, y_pred)
+    visualize_embeddings(feature_vectors, y_true)
+    #find_closest_vectors(feature_vector, y_true)
     test_loss /= test_num
 
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
@@ -178,6 +191,19 @@ def test(model, device, test_loader):
         100. * correct / test_num))
 
     return test_loss, correct / test_num
+
+
+def visualize_embeddings(feature_vectors, colors):
+    X_embedded = TSNE(n_components=2).fit_transform(feature_vectors)
+    print(X_embedded.shape)
+    classes = range(10)
+    plt.title("Embeddings")
+    scatter = plt.scatter(X_embedded[:,0], X_embedded[:,1], c=colors,
+            cmap=plt.get_cmap('Spectral'))
+    plt.legend(handles=scatter.legend_elements()[0], labels=classes)
+    plt.savefig('embeddings.png')
+    plt.show()
+
 
 def visualize_confusion_matrix(y_true, y_pred):
     C = confusion_matrix(y_true, y_pred)
@@ -299,6 +325,7 @@ def main():
             kernel = model.conv1.weight.data.clone()
             kernel2 = model.conv2.weight.data.clone()
             visualize_kernels(kernel, kernel2)
+
             test_dataset = datasets.MNIST(data_dir, train=False,
                         transform=transforms.Compose([
                             transforms.ToTensor(),
