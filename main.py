@@ -152,19 +152,29 @@ def test(model, device, test_loader):
     i = 1
     y_true = []
     y_pred = []
-    feature_vectors = []
+    data_np, feature_vector_np = None, None
     with torch.no_grad():   # For the inference step, gradient is not computed
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
             feature_vector = model(data, get_feature_vector=True)
+            if data_np is not None:
+                data_np = np.append(data_np,
+                        data.cpu().detach().numpy(), axis=0)
+            else:
+                data_np = data.cpu().detach().numpy()
+            if feature_vector_np is not None:
+                feature_vector_np = np.append(feature_vector_np,
+                        feature_vector.cpu().detach().numpy(), axis=0)
+            else:
+                feature_vector_np = feature_vector.cpu().detach().numpy()
+
 
             for j, o in enumerate(output):
                 output2 = torch.argmax(o)
                 target2 = target[j]
                 y_true.append(target2)
                 y_pred.append(output2)
-                feature_vectors.append(feature_vector[j].cpu().detach().numpy())
                 if output2 != target2:
                     if i <= 9:
                         figure.add_subplot(rows, cols, i)
@@ -180,9 +190,7 @@ def test(model, device, test_loader):
     plt.show()
 
     visualize_confusion_matrix(y_true, y_pred)
-    #visualize_embeddings(feature_vectors, y_true)
-    data_np = data.cpu().detach().numpy()
-    feature_vector_np = feature_vector.cpu().detach().numpy()
+    visualize_embeddings(feature_vector_np, y_true)
     find_closest_vectors(data_np, feature_vector_np)
     test_loss /= test_num
 
@@ -192,7 +200,12 @@ def test(model, device, test_loader):
 
     return test_loss, correct / test_num
 
+
 def find_closest_vectors(data_np, feature_vector_np):
+    """
+    Find the closest images by computing the Euclidean distance
+    on the feature vectors.
+    """
     figure = plt.figure(figsize=(8, 8))
     plt.suptitle("Images with Closest Feature Vectors")
     n = 4
@@ -213,9 +226,11 @@ def find_closest_vectors(data_np, feature_vector_np):
     plt.show()
 
 
-def visualize_embeddings(feature_vectors, colors):
-    X_embedded = TSNE(n_components=2).fit_transform(feature_vectors)
-    print(X_embedded.shape)
+def visualize_embeddings(feature_vector_np, colors):
+    """
+    Visualize the test images in a 2-dimensional embedding space.
+    """
+    X_embedded = TSNE(n_components=2).fit_transform(feature_vector_np)
     classes = range(10)
     plt.title("Embeddings")
     scatter = plt.scatter(X_embedded[:,0], X_embedded[:,1], c=colors,
@@ -226,6 +241,9 @@ def visualize_embeddings(feature_vectors, colors):
 
 
 def visualize_confusion_matrix(y_true, y_pred):
+    """
+    Visualize the confusion matrix for the model.
+    """
     C = confusion_matrix(y_true, y_pred)
     height, width = np.shape(C)
     fig, ax = plt.subplots()
@@ -250,6 +268,7 @@ def visualize_confusion_matrix(y_true, y_pred):
     fig.tight_layout()
     plt.savefig('confusion-matrix.png')
     plt.show()
+
 
 def visualize_kernels(kernel, kernel2=None):
     """
