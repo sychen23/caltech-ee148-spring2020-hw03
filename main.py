@@ -12,6 +12,7 @@ import os
 import random
 import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 
 '''
@@ -144,6 +145,8 @@ def test(model, device, test_loader):
     plt.suptitle('Model Mistakes')
     cols, rows = 3, 3
     i = 1
+    y_true = []
+    y_pred = []
     with torch.no_grad():   # For the inference step, gradient is not computed
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
@@ -151,6 +154,8 @@ def test(model, device, test_loader):
             for j, o in enumerate(output):
                 output2 = torch.argmax(o)
                 target2 = target[j]
+                y_true.append(target2)
+                y_pred.append(output2)
                 if output2 != target2:
                     if i <= 9:
                         figure.add_subplot(rows, cols, i)
@@ -165,6 +170,7 @@ def test(model, device, test_loader):
     plt.savefig('mismatches.png')
     plt.show()
 
+    visualize_confusion_matrix(y_true, y_pred)
     test_loss /= test_num
 
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
@@ -173,6 +179,31 @@ def test(model, device, test_loader):
 
     return test_loss, correct / test_num
 
+def visualize_confusion_matrix(y_true, y_pred):
+    C = confusion_matrix(y_true, y_pred)
+    height, width = np.shape(C)
+    fig, ax = plt.subplots()
+    im = ax.imshow(C)
+
+    ax.set_xlabel('Predicted Label')
+    ax.set_ylabel('True Label')
+
+    # We want to show all ticks...
+    ax.set_xticks(range(width))
+    ax.set_yticks(range(height))
+    # ... and label them with the respective list entries
+    ax.set_xticklabels(range(width))
+    ax.set_yticklabels(range(height))
+
+    # Loop over data dimensions and create text annotations.
+    for i in range(height):
+        for j in range(width):
+            text = ax.text(j, i, C[i, j], ha="center", va="center", color="w")
+
+    ax.set_title("Confusion Matrix")
+    fig.tight_layout()
+    plt.savefig('confusion-matrix.png')
+    plt.show()
 
 def visualize_kernels(kernel, kernel2=None):
     """
