@@ -153,7 +153,6 @@ def test(model, device, test_loader):
     y_true = []
     y_pred = []
     feature_vectors = []
-    #images = []
     with torch.no_grad():   # For the inference step, gradient is not computed
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
@@ -166,7 +165,6 @@ def test(model, device, test_loader):
                 y_true.append(target2)
                 y_pred.append(output2)
                 feature_vectors.append(feature_vector[j].cpu().detach().numpy())
-                #images.append(data)
                 if output2 != target2:
                     if i <= 9:
                         figure.add_subplot(rows, cols, i)
@@ -182,8 +180,10 @@ def test(model, device, test_loader):
     plt.show()
 
     visualize_confusion_matrix(y_true, y_pred)
-    visualize_embeddings(feature_vectors, y_true)
-    #find_closest_vectors(feature_vector, y_true)
+    #visualize_embeddings(feature_vectors, y_true)
+    data_np = data.cpu().detach().numpy()
+    feature_vector_np = feature_vector.cpu().detach().numpy()
+    find_closest_vectors(data_np, feature_vector_np)
     test_loss /= test_num
 
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
@@ -191,6 +191,26 @@ def test(model, device, test_loader):
         100. * correct / test_num))
 
     return test_loss, correct / test_num
+
+def find_closest_vectors(data_np, feature_vector_np):
+    figure = plt.figure(figsize=(8, 8))
+    plt.suptitle("Images with Closest Feature Vectors")
+    n = 4
+    cols, rows = 9, n
+    image_idx = 1
+    for i in range(n):
+        image = data_np[i,0,...]
+        u = feature_vector_np[i]
+        indices = [index for index, value in sorted(enumerate(feature_vector_np), key=lambda v:np.linalg.norm(u-v[1]))[:9]]
+        for j in indices:
+            figure.add_subplot(rows, cols, image_idx)
+            if j == i:
+                plt.title("Target")
+            plt.axis("off")
+            plt.imshow(data_np[j,0,...])
+            image_idx += 1
+    plt.savefig('closest.png')
+    plt.show()
 
 
 def visualize_embeddings(feature_vectors, colors):
